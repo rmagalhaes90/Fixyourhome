@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Camera, Check, ChevronRight, Clock3, Home, ImagePlus, ListChecks, Pause, Play, Sparkles, Trophy, X } from "lucide-react";
+import { InstallCard } from "./pwa";
 import { analyzePhoto } from "./lib/photo";
 import {
   AFFIRMATIONS,
@@ -216,6 +217,7 @@ export default function Page() {
               <i>😩</i>
               <span><b>Não sei por onde começar</b><small>Mostre o ambiente. Pense só no próximo passo.</small></span>
             </button>
+            <InstallCard />
             <div className="section"><h2>Esta semana</h2><span className="quiet">{history.real ? "Seus resets" : "Exemplo"}</span></div>
             <div className="stats">
               <article>🔥<b>{history.streak}</b><small>{history.streak === 1 ? "dia seguido" : "dias seguidos"}</small></article>
