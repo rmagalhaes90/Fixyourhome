@@ -10,6 +10,7 @@ type InstallPromptEvent = Event & {
 type Phone = "ios" | "android" | "desktop" | "installed";
 
 function phoneKind(): Phone {
+  if ("TidyNextNative" in window) return "installed";
   const standalone =
     window.matchMedia("(display-mode: standalone)").matches ||
     ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));

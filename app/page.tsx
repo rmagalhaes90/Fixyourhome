@@ -73,6 +73,20 @@ function writeHistory(next: History) {
   localStorage.setItem(HISTORY_KEY, historySnapshot);
   historyListeners.forEach((listener) => listener());
 }
+
+type NativeBridge = Window & {
+  TidyNextNative?: boolean;
+  ReactNativeWebView?: { postMessage: (message: string) => void };
+  TidyNextPhoto?: (dataUrl: string) => void;
+};
+
+function subscribeNative() {
+  return () => {};
+}
+
+function nativeSnapshot() {
+  return "TidyNextNative" in window;
+}
 const READS = ["A IA está olhando a sua foto", "Medindo a luz e o quanto o quadro está cheio", "Escolhendo poucos passos", "Calculando o tempo"];
 const FALLBACK = { brightness: 0.62, clutter: 0.58, colorfulness: 0.5, warm: 0.45, floorClutter: 0.34 };
 
@@ -92,12 +106,15 @@ export default function Page() {
   const [readStep, setReadStep] = useState(0);
   const [now, setNow] = useState<Date | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
+  const [serverReady, setServerReady] = useState(false);
   const [authError, setAuthError] = useState<string>();
   const [planSource, setPlanSource] = useState<"ai" | "device">("device");
   const savedHistory = useSyncExternalStore(subscribeHistory, readHistorySnapshot, () => "");
   const history = parseHistory(savedHistory);
   const file = useRef<HTMLInputElement>(null);
   const afterFile = useRef<HTMLInputElement>(null);
+  const pickTarget = useRef<(value: string) => void>(() => {});
+  const nativeApp = useSyncExternalStore(subscribeNative, nativeSnapshot, () => false);
   const tasks = plan?.tasks ?? [];
   const current = tasks[task];
 
@@ -117,10 +134,20 @@ export default function Page() {
         setScreen("account");
         window.history.replaceState({}, "", "/");
       }
+      if ("TidyNextNative" in window) return;
       void fetch("/api/auth/session")
-        .then((response) => response.json())
-        .then((body: { account?: Account | null }) => setAccount(body.account ?? null))
-        .catch(() => setAccount(null));
+        .then((response) => {
+          if (!response.ok) throw new Error("offline");
+          return response.json() as Promise<{ account?: Account | null }>;
+        })
+        .then((body) => {
+          setServerReady(true);
+          setAccount(body.account ?? null);
+        })
+        .catch(() => {
+          setServerReady(false);
+          setAccount(null);
+        });
     });
     return () => cancelAnimationFrame(frame);
   }, []);
@@ -154,11 +181,29 @@ export default function Page() {
   const statsLabel = signedIn ? "Sua conta" : history.real ? "Seus resets" : "Exemplo";
   const greetName = account ? firstName(account.name).toLocaleUpperCase("pt-BR") : null;
 
+  useEffect(() => {
+    const bridge = window as NativeBridge;
+    bridge.TidyNextPhoto = (dataUrl) => pickTarget.current(dataUrl);
+    return () => {
+      delete bridge.TidyNextPhoto;
+    };
+  }, []);
+
   function read(fileValue: File | undefined, set: (value: string) => void) {
     if (!fileValue) return;
     const reader = new FileReader();
     reader.onload = () => set(String(reader.result));
     reader.readAsDataURL(fileValue);
+  }
+
+  function choosePhoto(set: (value: string) => void, input: { current: HTMLInputElement | null }) {
+    const bridge = window as NativeBridge;
+    if (bridge.TidyNextNative && bridge.ReactNativeWebView) {
+      pickTarget.current = set;
+      bridge.ReactNativeWebView.postMessage(JSON.stringify({ type: "photo" }));
+      return;
+    }
+    input.current?.click();
   }
 
   function reset() {
@@ -183,7 +228,7 @@ export default function Page() {
 
   async function createPlan() {
     if (!photo) return;
-    if (!account) {
+    if (serverReady && !account) {
       setAuthError(authErrorMessage("sign_in_required"));
       setScreen("account");
       return;
@@ -193,7 +238,13 @@ export default function Page() {
     const started = Date.now();
     let next = buildPlan(FALLBACK, mode);
     let source: "ai" | "device" = "device";
-    try {
+    if (nativeApp) {
+      try {
+        next = await analyzePhoto(photo, mode);
+      } catch {
+        next = buildPlan(FALLBACK, mode);
+      }
+    } else try {
       const image = await shrinkPhoto(photo);
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -229,7 +280,7 @@ export default function Page() {
     await new Promise((resolve) => setTimeout(resolve, wait));
     setPlan(next);
     setPlanSource(source);
-    void refreshAccount();
+    if (!nativeApp) void refreshAccount().catch(() => {});
     setTask(0);
     setSeconds(0);
     setStepStart(0);
@@ -336,7 +387,7 @@ export default function Page() {
               <p>Uma foto ampla e bem iluminada funciona melhor.</p>
             </div>
             <input ref={file} hidden type="file" accept="image/*" capture="environment" onChange={(event) => read(event.target.files?.[0], setPhoto)} />
-            <button className={"photo " + (photo ? "ready" : "")} onClick={() => file.current?.click()} style={photo ? { backgroundImage: `linear-gradient(transparent,#071b1999),url(${photo})` } : undefined}>
+            <button className={"photo " + (photo ? "ready" : "")} onClick={() => choosePhoto(setPhoto, file)} style={photo ? { backgroundImage: `linear-gradient(transparent,#071b1999),url(${photo})` } : undefined}>
               {photo ? <><b><Check /> Foto pronta</b><small>Toque para trocar</small></> : <><i><ImagePlus /></i><b>Tirar ou escolher foto</b><small>JPG, PNG ou HEIC</small></>}
             </button>
             <div className="modeTitle"><b>Quanto tempo você tem?</b><small>Você pode mudar depois</small></div>
@@ -350,7 +401,7 @@ export default function Page() {
               ))}
             </div>
             <button className="primary" disabled={!photo} onClick={createPlan}><Sparkles />Criar meu plano</button>
-            <p className="privacy">Com a conta, a IA olha a foto para montar o plano. A imagem não fica salva.</p>
+            <p className="privacy">{nativeApp ? "A foto fica só neste iPhone. O plano é montado aqui." : "Com a conta, a IA olha a foto para montar o plano. A imagem não fica salva."}</p>
           </div>
         )}
 
@@ -423,7 +474,7 @@ export default function Page() {
             <div className="photos">
               <div style={photo ? { backgroundImage: `url(${photo})` } : undefined}><b>ANTES</b></div>
               <input ref={afterFile} hidden type="file" accept="image/*" capture="environment" onChange={(event) => read(event.target.files?.[0], setAfter)} />
-              <button onClick={() => afterFile.current?.click()} style={after ? { backgroundImage: `url(${after})` } : undefined}>
+              <button onClick={() => choosePhoto(setAfter, afterFile)} style={after ? { backgroundImage: `url(${after})` } : undefined}>
                 {after ? <b>DEPOIS</b> : <><Camera /><span>Adicionar foto<br />do resultado</span></>}
               </button>
             </div>
@@ -440,8 +491,8 @@ export default function Page() {
             <button className="close" onClick={() => setScreen("home")}><X /></button>
             <div className="center">
               <span className="kicker">CONTA</span>
-              <h1>{account ? `Olá, ${firstName(account.name)}.` : "Entre para guardar o seu plano."}</h1>
-              <p>{account ? "A conta guarda o nome, o e-mail e os planos. A foto não fica salva." : "Google ou Apple. A conta é criada no primeiro acesso."}</p>
+              <h1>{account ? `Olá, ${firstName(account.name)}.` : nativeApp ? "O plano fica neste iPhone." : "Entre para guardar o seu plano."}</h1>
+              <p>{account ? "A conta guarda o nome, o e-mail e os planos. A foto não fica salva." : nativeApp ? "Não há endereço público. Os pontos e o histórico ficam neste aparelho." : "Google ou Apple. A conta é criada no primeiro acesso."}</p>
             </div>
             {authError && <p className="authError">{authError}</p>}
             {account ? (
@@ -451,7 +502,7 @@ export default function Page() {
                 <small>{account.provider === "apple" ? "Apple" : "Google"} · {account.analyses} análises · {account.resets} {account.resets === 1 ? "reset" : "resets"}</small>
                 <button className="primary" onClick={() => { void fetch("/api/auth/signout", { method: "POST" }).then(() => setAccount(null)); }}>Sair</button>
               </div>
-            ) : (
+            ) : nativeApp ? null : (
               <div className="authButtons">
                 <a className="auth google" href="/api/auth/google">Continuar com o Google</a>
                 <a className="auth apple" href="/api/auth/apple">Continuar com a Apple</a>

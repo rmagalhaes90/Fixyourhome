@@ -30,13 +30,27 @@ URLs de retorno:
 
 Sem a chave de IA, o plano continua sendo montado pela leitura da foto neste aparelho e essa leitura também fica registrada na conta.
 
-## Instalar no celular
+## Instalar só no seu iPhone
 
-O TidyNext abre como um site e pode ficar na tela inicial, com ícone e nome próprios.
+O app em `mobile/` é instalado pelo Xcode no iPhone ligado ao seu Mac. Ele não publica um endereço. A foto, o plano, os pontos e o relógio ficam nesse aparelho.
 
-1. Abra o endereço publicado no celular.
-2. No iPhone, use o Safari: Compartilhar → Adicionar à Tela de Início.
-3. No Android, use o Chrome e toque em Instalar. A tela inicial do app também mostra esse caminho.
+No Mac, com o iPhone desbloqueado, o cabo conectado e o modo de desenvolvedor ligado:
+
+```bash
+cd mobile
+npm install
+npx expo run:ios --device
+```
+
+Na primeira vez, o Xcode pede a sua conta Apple para assinar o app `com.tidynext.home`. Escolha o iPhone na lista de dispositivos. O ícone TidyNext aparece na tela inicial.
+
+Para atualizar a tela empacotada depois de mudar o app web:
+
+```bash
+npm run bundle:iphone
+```
+
+Depois rode de novo `npx expo run:ios --device` dentro de `mobile`.
 
 ## Executar localmente
 
