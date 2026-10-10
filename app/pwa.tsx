@@ -38,7 +38,8 @@ export function useInstall() {
   }, []);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
+    if (!("serviceWorker" in navigator)) return;
+    if (window.location.protocol !== "https:") return;
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, []);
 
