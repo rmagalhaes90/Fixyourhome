@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Camera, Check, ChevronRight, Clock3, Home, ImagePlus, ListChecks, Pause, Play, Sparkles, Trophy, X } from "lucide-react";
 import { InstallCard } from "./pwa";
-import { analyzePhoto } from "./lib/photo";
+import { authErrorMessage, firstName, initials } from "./lib/ai-plan.mjs";
+import { analyzePhoto, shrinkPhoto } from "./lib/photo";
 import {
   AFFIRMATIONS,
   MODES,
@@ -21,7 +22,19 @@ import {
   recordReset,
 } from "./lib/plan.mjs";
 
-type Screen = "home" | "setup" | "analyzing" | "plan" | "cleaning" | "done";
+type Screen = "home" | "setup" | "analyzing" | "plan" | "cleaning" | "done" | "account";
+type Account = {
+  id: string;
+  email: string;
+  name: string;
+  provider: string;
+  streak: number;
+  minutes: number;
+  resets: number;
+  analyses: number;
+  lastScore: number | null;
+  lastDay: string | null;
+};
 type Mode = "quick" | "normal" | "deep";
 type Plan = ReturnType<typeof buildPlan>;
 type History = ReturnType<typeof recordReset>;
@@ -60,7 +73,7 @@ function writeHistory(next: History) {
   localStorage.setItem(HISTORY_KEY, historySnapshot);
   historyListeners.forEach((listener) => listener());
 }
-const READS = ["Lendo a sua foto", "Medindo a luz e o quanto o quadro está cheio", "Escolhendo poucos passos", "Calculando o tempo"];
+const READS = ["A IA está olhando a sua foto", "Medindo a luz e o quanto o quadro está cheio", "Escolhendo poucos passos", "Calculando o tempo"];
 const FALLBACK = { brightness: 0.62, clutter: 0.58, colorfulness: 0.5, warm: 0.45, floorClutter: 0.34 };
 
 export default function Page() {
@@ -78,6 +91,9 @@ export default function Page() {
   const [note, setNote] = useState<string>();
   const [readStep, setReadStep] = useState(0);
   const [now, setNow] = useState<Date | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
+  const [authError, setAuthError] = useState<string>();
+  const [planSource, setPlanSource] = useState<"ai" | "device">("device");
   const savedHistory = useSyncExternalStore(subscribeHistory, readHistorySnapshot, () => "");
   const history = parseHistory(savedHistory);
   const file = useRef<HTMLInputElement>(null);
@@ -90,6 +106,23 @@ export default function Page() {
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("auth_error");
+      if (code) {
+        setAuthError(authErrorMessage(code));
+        setScreen("account");
+        window.history.replaceState({}, "", "/");
+      }
+      void fetch("/api/auth/session")
+        .then((response) => response.json())
+        .then((body: { account?: Account | null }) => setAccount(body.account ?? null))
+        .catch(() => setAccount(null));
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
@@ -106,8 +139,20 @@ export default function Page() {
 
   const clock = now ? formatClock(now) : "--:--";
   const hello = now ? greeting(now) : "OLÁ";
-  const score = history.real ? history.score : SAMPLE.score;
-  const roomLine = history.real && now ? lastLabel(history, now) : "Última organização há 5 dias";
+  const signedIn = Boolean(account);
+  const score = signedIn ? account?.lastScore ?? 0 : history.real ? history.score : SAMPLE.score;
+  const roomLine = signedIn
+    ? account?.lastDay && now
+      ? lastLabel({ real: true, streak: account.streak, minutes: account.minutes, resets: account.resets, score: account.lastScore ?? 0, lastDay: account.lastDay }, now)
+      : "Ainda sem um reset salvo"
+    : history.real && now
+      ? lastLabel(history, now)
+      : "Última organização há 5 dias";
+  const streak = signedIn ? account?.streak ?? 0 : history.streak;
+  const organizedMinutes = signedIn ? account?.minutes ?? 0 : history.minutes;
+  const resetCount = signedIn ? account?.resets ?? 0 : history.resets;
+  const statsLabel = signedIn ? "Sua conta" : history.real ? "Seus resets" : "Exemplo";
+  const greetName = account ? firstName(account.name).toLocaleUpperCase("pt-BR") : null;
 
   function read(fileValue: File | undefined, set: (value: string) => void) {
     if (!fileValue) return;
@@ -130,20 +175,61 @@ export default function Page() {
     setNote(undefined);
   }
 
+  async function refreshAccount() {
+    const response = await fetch("/api/auth/session");
+    const body = (await response.json()) as { account?: Account | null };
+    setAccount(body.account ?? null);
+  }
+
   async function createPlan() {
     if (!photo) return;
+    if (!account) {
+      setAuthError(authErrorMessage("sign_in_required"));
+      setScreen("account");
+      return;
+    }
     setScreen("analyzing");
     setReadStep(0);
     const started = Date.now();
     let next = buildPlan(FALLBACK, mode);
+    let source: "ai" | "device" = "device";
     try {
-      next = await analyzePhoto(photo, mode);
+      const image = await shrinkPhoto(photo);
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ image, mode }),
+      });
+      if (response.status === 401) {
+        setAccount(null);
+        setAuthError(authErrorMessage("sign_in_required"));
+        setScreen("account");
+        return;
+      }
+      if (response.ok) {
+        const body = (await response.json()) as { plan: Plan };
+        next = body.plan;
+        source = "ai";
+      } else {
+        next = await analyzePhoto(photo, mode);
+        await fetch("/api/analyses", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ mode, plan: next }),
+        });
+      }
     } catch {
-      next = buildPlan(FALLBACK, mode);
+      try {
+        next = await analyzePhoto(photo, mode);
+      } catch {
+        next = buildPlan(FALLBACK, mode);
+      }
     }
-    const wait = Math.max(0, 1600 - (Date.now() - started));
+    const wait = Math.max(0, 900 - (Date.now() - started));
     await new Promise((resolve) => setTimeout(resolve, wait));
     setPlan(next);
+    setPlanSource(source);
+    void refreshAccount();
     setTask(0);
     setSeconds(0);
     setStepStart(0);
@@ -185,7 +271,16 @@ export default function Page() {
     const totalPoints = nextPoints + bonus;
     const finalScore = afterScore(plan.beforeScore, nextDone, tasks.length);
     setPoints(totalPoints);
-    writeHistory(recordReset(history, { minutes: Math.max(1, Math.round(seconds / 60)), score: finalScore, now: moment }));
+    const minutes = Math.max(1, Math.round(seconds / 60));
+    writeHistory(recordReset(history, { minutes, score: finalScore, now: moment }));
+    if (account) {
+      const day = `${moment.getFullYear()}-${String(moment.getMonth() + 1).padStart(2, "0")}-${String(moment.getDate()).padStart(2, "0")}`;
+      void fetch("/api/resets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode, minutes, score: finalScore, day }),
+      }).then(() => refreshAccount());
+    }
     setScreen("done");
   }
 
@@ -200,12 +295,12 @@ export default function Page() {
             <i><Sparkles /></i>TidyNext
           </button>
           <time className="clockChip"><Clock3 />{clock}</time>
-          <button className="avatar">RM</button>
+          <button className="avatar" onClick={() => setScreen("account")}>{account ? initials(account.name) : "•"}</button>
         </header>
 
         {screen === "home" && (
           <div className="page home">
-            <p className="kicker">{hello}, RAMON</p>
+            <p className="kicker">{greetName ? `${hello}, ${greetName}` : hello}</p>
             <h1>Qual bagunça vamos<br />resolver agora?</h1>
             <p className="when">Agora são <b>{clock}</b>. Uma foto vira um plano curto.</p>
             <button className="scan" onClick={() => setScreen("setup")}>
@@ -218,11 +313,11 @@ export default function Page() {
               <span><b>Não sei por onde começar</b><small>Mostre o ambiente. Pense só no próximo passo.</small></span>
             </button>
             <InstallCard />
-            <div className="section"><h2>Esta semana</h2><span className="quiet">{history.real ? "Seus resets" : "Exemplo"}</span></div>
+            <div className="section"><h2>Esta semana</h2><span className="quiet">{statsLabel}</span></div>
             <div className="stats">
-              <article>🔥<b>{history.streak}</b><small>{history.streak === 1 ? "dia seguido" : "dias seguidos"}</small></article>
-              <article><Clock3 /><b>{history.minutes} min</b><small>organizando</small></article>
-              <article>✦<b>{history.resets}</b><small>{history.resets === 1 ? "reset feito" : "resets feitos"}</small></article>
+              <article>🔥<b>{streak}</b><small>{streak === 1 ? "dia seguido" : "dias seguidos"}</small></article>
+              <article><Clock3 /><b>{organizedMinutes} min</b><small>organizando</small></article>
+              <article>✦<b>{resetCount}</b><small>{resetCount === 1 ? "reset feito" : "resets feitos"}</small></article>
             </div>
             <div className="room">
               <i>🛏️</i>
@@ -255,7 +350,7 @@ export default function Page() {
               ))}
             </div>
             <button className="primary" disabled={!photo} onClick={createPlan}><Sparkles />Criar meu plano</button>
-            <p className="privacy">Sua foto fica neste aparelho e só serve para montar este plano.</p>
+            <p className="privacy">Com a conta, a IA olha a foto para montar o plano. A imagem não fica salva.</p>
           </div>
         )}
 
@@ -273,7 +368,7 @@ export default function Page() {
         {screen === "plan" && plan && (
           <div className="page plan">
             <button className="close" onClick={() => setScreen("setup")}><X /></button>
-            <span className="pill"><Sparkles /> PLANO PRONTO</span>
+            <span className="pill"><Sparkles /> {planSource === "ai" ? "PLANO DA IA" : "PLANO DESTA FOTO"}</span>
             <h1>Você consegue resolver isso em cerca de <em>{plan.totalMinutes} minutos.</em></h1>
             {now && <p className="when">Se começar agora ({clock}), termina por volta de <b>{finishClock(now, plan.totalMinutes)}</b>.</p>}
             {photo && <div className="planShot" style={{ backgroundImage: `url(${photo})` }}><b>Sua foto</b></div>}
@@ -340,13 +435,38 @@ export default function Page() {
           </div>
         )}
 
+        {screen === "account" && (
+          <div className="page account">
+            <button className="close" onClick={() => setScreen("home")}><X /></button>
+            <div className="center">
+              <span className="kicker">CONTA</span>
+              <h1>{account ? `Olá, ${firstName(account.name)}.` : "Entre para guardar o seu plano."}</h1>
+              <p>{account ? "A conta guarda o nome, o e-mail e os planos. A foto não fica salva." : "Google ou Apple. A conta é criada no primeiro acesso."}</p>
+            </div>
+            {authError && <p className="authError">{authError}</p>}
+            {account ? (
+              <div className="accountCard">
+                <b>{account.name}</b>
+                <small>{account.email}</small>
+                <small>{account.provider === "apple" ? "Apple" : "Google"} · {account.analyses} análises · {account.resets} {account.resets === 1 ? "reset" : "resets"}</small>
+                <button className="primary" onClick={() => { void fetch("/api/auth/signout", { method: "POST" }).then(() => setAccount(null)); }}>Sair</button>
+              </div>
+            ) : (
+              <div className="authButtons">
+                <a className="auth google" href="/api/auth/google">Continuar com o Google</a>
+                <a className="auth apple" href="/api/auth/apple">Continuar com a Apple</a>
+              </div>
+            )}
+          </div>
+        )}
+
         {screen === "home" && (
           <nav>
             <button className="on"><Home />Início</button>
             <button>▦<span>Cômodos</span></button>
             <button className="camera" onClick={() => setScreen("setup")}><Camera /></button>
             <button><ListChecks />Histórico</button>
-            <button>○<span>Perfil</span></button>
+            <button onClick={() => setScreen("account")}>○<span>Perfil</span></button>
           </nav>
         )}
       </section>

@@ -13,6 +13,23 @@ Aplicativo mobile-first que transforma uma foto da bagunça em um plano simples 
 - comparação antes/depois e Room Score;
 - layout responsivo para celular e web.
 
+## Conta, IA e banco
+
+Cada pessoa entra com Google ou Apple. O primeiro acesso cria a conta. O banco guarda o nome, o e-mail, o provedor, cada plano e cada reset. A foto é enviada só para a análise e não fica salva.
+
+Variáveis de ambiente, nunca no código:
+
+- `OPENAI_API_KEY` e, se quiser, `OPENAI_MODEL` (padrão `gpt-4o-mini`)
+- `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET`
+- `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID` e `APPLE_PRIVATE_KEY`
+
+URLs de retorno:
+
+- `/api/auth/google/callback`
+- `/api/auth/apple/callback`
+
+Sem a chave de IA, o plano continua sendo montado pela leitura da foto neste aparelho e essa leitura também fica registrada na conta.
+
 ## Instalar no celular
 
 O TidyNext abre como um site e pode ficar na tela inicial, com ícone e nome próprios.

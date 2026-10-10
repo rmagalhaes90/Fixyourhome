@@ -19,6 +19,21 @@ export async function signalsFromDataUrl(dataUrl: string) {
   return signalsFromPixels(data, SIZE);
 }
 
+export async function shrinkPhoto(dataUrl: string) {
+  const image = new Image();
+  image.decoding = "async";
+  image.src = dataUrl;
+  await image.decode();
+  const scale = Math.min(1, 1024 / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) return dataUrl;
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
 export async function analyzePhoto(dataUrl: string, mode: Mode) {
   const signals = await signalsFromDataUrl(dataUrl);
   return buildPlan(signals, mode);
