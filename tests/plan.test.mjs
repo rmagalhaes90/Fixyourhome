@@ -49,11 +49,22 @@ function noisy(size) {
 
 test("a flat bright photo reads as calm and a noisy photo reads as full", () => {
   const calm = signalsFromPixels(solid(16, [210, 214, 208]), 16);
+  const dark = signalsFromPixels(solid(16, [12, 14, 18]), 16);
   const busy = signalsFromPixels(noisy(16), 16);
   assert.ok(calm.clutter < 0.2);
   assert.ok(calm.brightness > 0.7);
+  assert.ok(dark.brightness < 0.2);
+  assert.ok(dark.colorfulness < 0.2);
   assert.ok(busy.clutter > calm.clutter);
   assert.ok(busy.colorfulness > calm.colorfulness);
+  assert.ok(busy.colorfulness > 0.45);
+});
+
+test("a bright photo does not start by turning on the light", () => {
+  const bright = buildPlan({ brightness: 0.72, clutter: 0.7, colorfulness: 0.8, warm: 0.62, floorClutter: 0.68 }, "normal");
+  assert.notEqual(bright.tasks[0].id, "lights");
+  assert.equal(bright.insightTitle, "O maior impacto visual");
+  assert.ok(bright.tasks.some((task) => task.id === "clothes"));
 });
 
 test("a dark photo puts light first and a colorful photo talks about color", () => {

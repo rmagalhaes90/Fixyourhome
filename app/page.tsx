@@ -218,9 +218,9 @@ export default function Page() {
             </button>
             <div className="section"><h2>Esta semana</h2><span className="quiet">{history.real ? "Seus resets" : "Exemplo"}</span></div>
             <div className="stats">
-              <article>🔥<b>{history.streak}</b><small>dias seguidos</small></article>
+              <article>🔥<b>{history.streak}</b><small>{history.streak === 1 ? "dia seguido" : "dias seguidos"}</small></article>
               <article><Clock3 /><b>{history.minutes} min</b><small>organizando</small></article>
-              <article>✦<b>{history.resets}</b><small>resets feitos</small></article>
+              <article>✦<b>{history.resets}</b><small>{history.resets === 1 ? "reset feito" : "resets feitos"}</small></article>
             </div>
             <div className="room">
               <i>🛏️</i>

@@ -61,7 +61,8 @@ export function signalsFromPixels(data, size) {
     lums[p] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
-    satSum += max === 0 ? 0 : (max - min) / max;
+    const sat = max === 0 ? 0 : (max - min) / max;
+    satSum += sat * lums[p];
     if (r > b + 0.04 && r > 0.15) warm++;
   }
   const mean = lums.reduce((sum, value) => sum + value, 0) / count;
@@ -86,7 +87,7 @@ export function signalsFromPixels(data, size) {
   return {
     brightness: clamp01(mean),
     clutter: clamp01(edgeMean * 5.5 + Math.sqrt(variance) * 1.4),
-    colorfulness: clamp01((satSum / count) * 1.8),
+    colorfulness: clamp01((satSum / count) * 3.4),
     warm: warm / count,
     floorClutter: clamp01(floorMean * 6.2),
   };
@@ -94,7 +95,7 @@ export function signalsFromPixels(data, size) {
 
 function scoreTask(task, signals, mode) {
   let score = 1;
-  if (task.id === "lights") score += (1 - signals.brightness) * 8;
+  if (task.id === "lights") score += signals.brightness < 0.38 ? 8 : -20;
   if (task.id === "clothes" || task.id === "bed") score += signals.colorfulness * 4 + signals.warm * 2;
   if (task.id === "papers") score += (1 - signals.colorfulness) * 3.2 + signals.clutter * 1.4;
   if (task.id === "dishes") score += signals.clutter * 1.6 + (1 - signals.warm) * 1.4;
@@ -114,7 +115,7 @@ function insightFor(signals) {
       insightBody: "A foto está escura. Abrir a luz muda o que você consegue fazer em seguida.",
     };
   }
-  if (signals.floorClutter > 0.55 && signals.floorClutter > signals.clutter * 0.85) {
+  if (signals.floorClutter > 0.62 && signals.floorClutter > signals.clutter + 0.12) {
     return {
       insightTitle: "O chão pede passagem",
       insightBody: "A parte de baixo da foto está bem ocupada. Abrir um caminho já alivia o cômodo.",
