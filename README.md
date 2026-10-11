@@ -52,15 +52,15 @@ git pull origin cursor/refine-photo-task-flow-ad85
 bash mobile/install-iphone.sh
 ```
 
-O script instala as dependências, gera o projeto do Xcode e instala no iPhone. Na primeira vez, o Xcode pede a sua conta Apple para assinar `com.tidynext.home`. Escolha o iPhone na lista. O ícone TidyNext aparece na tela inicial.
+O script instala as dependências, cria a pasta `mobile/ios` e abre o projeto no Xcode.
 
-Para atualizar a tela empacotada depois de mudar o app web:
+No Xcode:
 
-```bash
-npm run bundle:iphone
-```
+1. No alvo TidyNext, abra Signing & Capabilities e escolha a sua conta Apple em Team.
+2. No topo, selecione o seu iPhone. O identificador é `com.tidynext.home`.
+3. Aperte Run. Se o iPhone pedir, em Ajustes aceite o desenvolvedor. O ícone TidyNext fica na tela inicial.
 
-Depois rode de novo `bash mobile/install-iphone.sh`.
+Abra sempre o arquivo `.xcworkspace` dentro de `mobile/ios`, não o `.xcodeproj`.
 
 ## Executar localmente
 
