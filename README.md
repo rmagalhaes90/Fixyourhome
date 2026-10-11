@@ -32,7 +32,7 @@ Sem a chave de IA, o plano continua sendo montado pela leitura da foto neste apa
 
 ## Instalar só no seu iPhone
 
-O app em `mobile/` é instalado pelo Xcode no iPhone ligado ao seu Mac. Ele não publica um endereço. A foto, o plano, os pontos e o relógio ficam nesse aparelho.
+O app em `mobile/` é uma tela nativa, instalada pelo Xcode no iPhone ligado ao seu Mac. Ele não abre uma página web e não publica um endereço. A foto, o plano, os pontos e o relógio ficam nesse aparelho.
 
 A pasta `mobile` existe neste branch (`cursor/refine-photo-task-flow-ad85`). Ela não está na pasta de outro projeto, como Lumacare. No Mac, com o iPhone desbloqueado, o cabo conectado e o modo de desenvolvedor ligado:
 

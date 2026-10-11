@@ -4,26 +4,15 @@ import test from "node:test";
 
 const app = JSON.parse(readFileSync(new URL("../mobile/app.json", import.meta.url), "utf8"));
 const shell = readFileSync(new URL("../mobile/App.js", import.meta.url), "utf8");
-const htmlModule = readFileSync(new URL("../mobile/html.js", import.meta.url), "utf8");
+const pkg = JSON.parse(readFileSync(new URL("../mobile/package.json", import.meta.url), "utf8"));
 
-test("the iPhone app is a private on-device shell", () => {
+test("the iPhone app opens as a native screen on this phone", () => {
   assert.equal(app.expo.ios.bundleIdentifier, "com.tidynext.home");
   assert.match(app.expo.plugins[0][1].cameraPermission, /iPhone/);
-  assert.match(shell, /react-native-webview/);
-  assert.match(shell, /baseUrl: "https:\/\/tidynext\.local"/);
-  assert.match(shell, /TidyNextNative/);
+  assert.match(shell, /Criar meu plano/);
+  assert.match(shell, /O plano fica neste iPhone/);
+  assert.match(shell, /buildPlan/);
+  assert.doesNotMatch(shell, /react-native-webview|appHtml|WebView/);
+  assert.equal(pkg.dependencies["react-native-webview"], undefined);
   assert.doesNotMatch(shell, /trycloudflare|ngrok|localhost:\d+/);
-});
-
-test("the installed screen is one HTML file with the on-phone plan", () => {
-  assert.match(htmlModule, /^export const appHtml = "/);
-  const html = JSON.parse(htmlModule.slice(htmlModule.indexOf("=") + 1).trim().replace(/;$/, ""));
-  assert.match(html, /<style>/);
-  assert.match(html, /<script>/);
-  assert.doesNotMatch(html, /<script type="module">/);
-  assert.match(html, /<script>[\s\S]*<\/script>\s*<\/body>/);
-  assert.equal(html.toLowerCase().split("</script>").length, 2);
-  assert.match(html, /Criar meu plano/);
-  assert.match(html, /O plano fica neste iPhone/);
-  assert.doesNotMatch(html, /trycloudflare|ngrok/);
 });

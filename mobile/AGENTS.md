@@ -1,6 +1,6 @@
 # TidyNext no iPhone
 
-Este diretório é o app nativo instalado pelo Xcode. A tela está em `html.js`, gerada na raiz com `npm run bundle:iphone`. Não publique um endereço.
+Este diretório é o app nativo instalado pelo Xcode. A tela abre direto no iPhone, sem WebView. Não publique um endereço.
 
 No Mac, a partir desta pasta, com o iPhone conectado:
 
