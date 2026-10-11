@@ -25,6 +25,14 @@
     },
     "plugins": [
       [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "O TidyNext abre uma foto da sua biblioteca só neste iPhone, para montar o plano.",

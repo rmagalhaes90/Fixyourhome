@@ -52,7 +52,7 @@ git pull origin cursor/refine-photo-task-flow-ad85
 bash mobile/install-iphone.sh
 ```
 
-O script instala as dependências, cria a pasta `mobile/ios` e abre o projeto no Xcode.
+O script instala as dependências, cria a pasta `mobile/ios` com o ciclo de vida de cenas que o Xcode atual exige, e abre o projeto no Xcode.
 
 No Xcode:
 
