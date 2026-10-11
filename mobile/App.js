@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { useRef, useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { WebView } from "react-native-webview";
 import * as ImagePicker from "expo-image-picker";
@@ -9,8 +9,9 @@ const BEFORE_LOAD = "window.TidyNextNative=true;document.documentElement.classLi
 
 export default function App() {
   const web = useRef(null);
+  const [ready, setReady] = useState(false);
 
-  async function open(kind) {
+  async function pickPhoto(kind) {
     const permission = kind === "camera"
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -34,10 +35,14 @@ export default function App() {
     } catch {
       return;
     }
+    if (data.type === "ready") {
+      setReady(true);
+      return;
+    }
     if (data.type !== "photo") return;
     Alert.alert("Foto do cômodo", "A foto fica neste iPhone.", [
-      { text: "Câmera", onPress: () => { void open("camera"); } },
-      { text: "Biblioteca", onPress: () => { void open("library"); } },
+      { text: "Câmera", onPress: () => { void pickPhoto("camera"); } },
+      { text: "Biblioteca", onPress: () => { void pickPhoto("library"); } },
       { text: "Cancelar", style: "cancel" },
     ]);
   }
@@ -58,7 +63,15 @@ export default function App() {
         mediaCapturePermissionGrantType="grant"
         setSupportMultipleWindows={false}
         bounces={false}
+        onLoadEnd={() => setReady(true)}
+        onError={() => setReady(false)}
       />
+      {ready ? null : (
+        <View style={styles.boot}>
+          <Text style={styles.bootTitle}>TidyNext</Text>
+          <Text style={styles.bootText}>Abrindo neste iPhone…</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -66,4 +79,18 @@ export default function App() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#f4f7f4" },
   web: { flex: 1, backgroundColor: "#f4f7f4" },
+  boot: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f4f7f4",
+    padding: 24,
+  },
+  bootTitle: { color: "#0c7b67", fontSize: 28, fontWeight: "800" },
+  bootText: { color: "#10322d", fontSize: 16, marginTop: 8 },
 });

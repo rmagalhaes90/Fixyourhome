@@ -33,7 +33,9 @@ function singleFile() {
       const style = `<style>${styles.join("\n")}</style>`;
       html = html.replace(/<link[^>]+rel="stylesheet"[^>]*>/g, () => style);
       html = html.replace(/<link[^>]+rel="modulepreload"[^>]*>/g, "");
-      html = html.replace(/<script type="module"[^>]*src="[^"]+"[^>]*><\/script>/, () => `<script type="module">${code}</script>`);
+      html = html.replace(/<script\b[^>]*src="[^"]+"[^>]*><\/script>/, "");
+      if (!html.includes("</body>")) throw new Error("iPhone HTML has no body");
+      html = html.replace("</body>", () => `<script>${code}</script></body>`);
       for (const name of Object.keys(bundle)) {
         if (name !== htmlKey) delete bundle[name];
       }
@@ -57,6 +59,8 @@ await build({
     rollupOptions: {
       input,
       output: {
+        format: "iife",
+        inlineDynamicImports: true,
         codeSplitting: false,
       },
     },
@@ -77,8 +81,11 @@ function findHtml(dir) {
 const htmlPath = findHtml(outDir);
 if (!htmlPath) throw new Error("iPhone bundle HTML was not written");
 const html = readFileSync(htmlPath, "utf8");
-if (!html.includes("<style>") || !html.includes("<script type=\"module\">")) {
-  throw new Error("iPhone HTML is still split into extra files");
+if (!html.includes("<style>") || !html.includes("<script>") || html.includes("<script type=\"module\">")) {
+  throw new Error("iPhone HTML must be one classic script so the iPhone WebView runs it");
+}
+if (/\bimport\s|\bexport\s/.test(html.slice(html.indexOf("<script>")))) {
+  throw new Error("iPhone script is still a module");
 }
 writeFileSync(htmlModule, `export const appHtml = ${JSON.stringify(html)};\n`);
 rmSync(outDir, { recursive: true, force: true });

@@ -9,5 +9,5 @@ if [[ ! -f app.json ]]; then
 fi
 
 npm install
-EXPO_NO_GIT_STATUS=1 npx expo prebuild --platform ios
+CI=1 EXPO_NO_GIT_STATUS=1 npx expo prebuild --platform ios --clean
 npx expo run:ios --device

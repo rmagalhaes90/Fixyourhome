@@ -5,6 +5,7 @@ import Page from "../../app/page";
 declare global {
   interface Window {
     TidyNextNative?: boolean;
+    ReactNativeWebView?: { postMessage: (message: string) => void };
   }
 }
 
@@ -14,3 +15,4 @@ document.documentElement.classList.add("native");
 const root = document.getElementById("root");
 if (!root) throw new Error("TidyNext root missing");
 createRoot(root).render(<Page />);
+window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "ready" }));

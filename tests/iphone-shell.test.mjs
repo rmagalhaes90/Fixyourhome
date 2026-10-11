@@ -19,7 +19,9 @@ test("the installed screen is one HTML file with the on-phone plan", () => {
   assert.match(htmlModule, /^export const appHtml = "/);
   const html = JSON.parse(htmlModule.slice(htmlModule.indexOf("=") + 1).trim().replace(/;$/, ""));
   assert.match(html, /<style>/);
-  assert.match(html, /<script type="module">/);
+  assert.match(html, /<script>/);
+  assert.doesNotMatch(html, /<script type="module">/);
+  assert.match(html, /<script>[\s\S]*<\/script>\s*<\/body>/);
   assert.equal(html.toLowerCase().split("</script>").length, 2);
   assert.match(html, /Criar meu plano/);
   assert.match(html, /O plano fica neste iPhone/);
