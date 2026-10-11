@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "TidyNext",
+    "slug": "tidynext",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#0c7b67",
+    "ios": {
+      "bundleIdentifier": "com.tidynext.home",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.tidynext.home",
+      "adaptiveIcon": {
+        "backgroundColor": "#0c7b67",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O TidyNext abre uma foto da sua biblioteca só neste iPhone, para montar o plano.",
+          "cameraPermission": "O TidyNext usa a câmera só neste iPhone, para fotografar o cômodo."
+        }
+      ]
+    ]
+  }
+}

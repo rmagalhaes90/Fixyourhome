@@ -1,0 +1,21 @@
+{
+  "name": "tidynext",
+  "version": "1.0.0",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo prebuild --platform ios && expo run:ios --device"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "~57.0.27",
+    "expo-build-properties": "~57.0.22",
+    "expo-image-manipulator": "~57.0.21",
+    "expo-image-picker": "~57.0.20",
+    "expo-status-bar": "~57.0.1",
+    "jpeg-js": "0.4.4",
+    "react": "19.2.3",
+    "react-native": "0.86.3"
+  }
+}
