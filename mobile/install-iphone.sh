@@ -11,21 +11,37 @@ fi
 npm install
 CI=1 EXPO_NO_GIT_STATUS=1 npx expo prebuild --platform ios --clean
 
-workspace="$(find ios -maxdepth 1 -name '*.xcworkspace' -print -quit)"
-if [[ -z "${workspace}" ]]; then
-  echo "Xcode project was not created in mobile/ios." >&2
+plist="$(find ios -name Info.plist -path '*TidyNext/Info.plist' -print -quit)"
+if [[ -z "${plist}" ]] || ! grep -q 'EXExpoAppSceneDelegate' "${plist}"; then
+  echo "This Xcode project cannot launch. It is missing the iOS scene lifecycle." >&2
   exit 1
 fi
 
+scheme="$(find ios -name '*.xcscheme' -path '*xcshareddata*' -print -quit)"
+python3 - "${scheme}" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+old = '<LaunchAction\n      buildConfiguration = "Debug"'
+new = '<LaunchAction\n      buildConfiguration = "Release"'
+if old not in text:
+    raise SystemExit("Could not set the Xcode Run action to Release.")
+path.write_text(text.replace(old, new, 1))
+PY
+
+node_bin="$(command -v node)"
+printf 'export NODE_BINARY=%q\n' "${node_bin}" > ios/.xcode.env.local
+
+workspace="$(find ios -maxdepth 1 -name '*.xcworkspace' -print -quit)"
 echo
-echo "Xcode project: $(pwd)/${workspace}"
-echo "1. Select the TidyNext target, then Signing & Capabilities, and choose your Apple ID as the Team."
-echo "2. At the top, choose your iPhone. Bundle id: com.tidynext.home"
-echo "3. Press the Run button. On the iPhone, trust the developer in Settings if iOS asks."
+echo "The iPhone project now uses the scene lifecycle, so iOS can launch it."
+echo "Xcode will install a Release build. The app includes its own screen and does not need a dev server."
+echo "Project: $(pwd)/${workspace}"
+echo "1. Signing & Capabilities: set Team to your Apple ID. Bundle id com.tidynext.home"
+echo "2. Choose your iPhone at the top."
+echo "3. Press Run."
 echo
 
 if [[ "$(uname)" == "Darwin" ]]; then
   open "${workspace}"
-else
-  echo "Open ${workspace} in Xcode on your Mac."
 fi

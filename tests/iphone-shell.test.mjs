@@ -11,6 +11,9 @@ test("the iPhone app opens as a native screen on this phone", () => {
   const scene = app.expo.plugins.find((plugin) => Array.isArray(plugin) && plugin[0] === "expo-build-properties");
   const camera = app.expo.plugins.find((plugin) => Array.isArray(plugin) && plugin[0] === "expo-image-picker");
   assert.equal(scene[1].ios.enableSceneSupport, true);
+  const installer = readFileSync(new URL("../mobile/install-iphone.sh", import.meta.url), "utf8");
+  assert.match(installer, /EXExpoAppSceneDelegate/);
+  assert.match(installer, /buildConfiguration = "Release"/);
   assert.match(camera[1].cameraPermission, /iPhone/);
   assert.match(shell, /Criar meu plano/);
   assert.match(shell, /O plano fica neste iPhone/);

@@ -52,7 +52,7 @@ git pull origin cursor/refine-photo-task-flow-ad85
 bash mobile/install-iphone.sh
 ```
 
-O script instala as dependências, cria a pasta `mobile/ios` com o ciclo de vida de cenas que o Xcode atual exige, e abre o projeto no Xcode.
+O script instala as dependências, recria a pasta `mobile/ios` com o ciclo de vida de cenas que o Xcode atual exige, coloca o botão Run em Release e abre o projeto. O app leva a tela dentro dele, então o iPhone não precisa de um servidor de desenvolvimento.
 
 No Xcode:
 
