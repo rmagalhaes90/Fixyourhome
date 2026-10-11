@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start": "expo start",
-    "ios": "expo run:ios --device"
+    "ios": "expo prebuild --platform ios && expo run:ios --device"
   },
   "dependencies": {
     "expo": "~57.0.27",

@@ -34,15 +34,25 @@ Sem a chave de IA, o plano continua sendo montado pela leitura da foto neste apa
 
 O app em `mobile/` é instalado pelo Xcode no iPhone ligado ao seu Mac. Ele não publica um endereço. A foto, o plano, os pontos e o relógio ficam nesse aparelho.
 
-No Mac, com o iPhone desbloqueado, o cabo conectado e o modo de desenvolvedor ligado:
+A pasta `mobile` existe neste branch (`cursor/refine-photo-task-flow-ad85`). Ela não está na pasta de outro projeto, como Lumacare. No Mac, com o iPhone desbloqueado, o cabo conectado e o modo de desenvolvedor ligado:
 
 ```bash
-cd mobile
-npm install
-npx expo run:ios --device
+git clone -b cursor/refine-photo-task-flow-ad85 https://github.com/rmagalhaes90/Fixyourhome.git
+cd Fixyourhome/mobile
+bash install-iphone.sh
 ```
 
-Na primeira vez, o Xcode pede a sua conta Apple para assinar o app `com.tidynext.home`. Escolha o iPhone na lista de dispositivos. O ícone TidyNext aparece na tela inicial.
+Se o repositório já estiver no Mac, entre nele, atualize esse branch e rode o mesmo script:
+
+```bash
+cd /caminho/do/Fixyourhome
+git fetch origin
+git checkout cursor/refine-photo-task-flow-ad85
+git pull origin cursor/refine-photo-task-flow-ad85
+bash mobile/install-iphone.sh
+```
+
+O script instala as dependências, gera o projeto do Xcode e instala no iPhone. Na primeira vez, o Xcode pede a sua conta Apple para assinar `com.tidynext.home`. Escolha o iPhone na lista. O ícone TidyNext aparece na tela inicial.
 
 Para atualizar a tela empacotada depois de mudar o app web:
 
@@ -50,7 +60,7 @@ Para atualizar a tela empacotada depois de mudar o app web:
 npm run bundle:iphone
 ```
 
-Depois rode de novo `npx expo run:ios --device` dentro de `mobile`.
+Depois rode de novo `bash mobile/install-iphone.sh`.
 
 ## Executar localmente
 
